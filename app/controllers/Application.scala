@@ -17,6 +17,7 @@ object Application extends Controller {
       onStart = { pushee =>
         pushee.push(content)
         pushee.push(content)
+        pushee.end()
       }
     )
 
@@ -28,7 +29,7 @@ object Application extends Controller {
           CONTENT_DISPOSITION -> s"""attachment; filename="stream-test.txt"""",
           CONTENT_TYPE -> "plain/txt"
         )),
-      body = channel andThen Enumerator.eof
+      body = channel
     )
 
   }

@@ -6,6 +6,7 @@ import scala.concurrent.{Future, Promise}
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.mvc.ResponseHeader
 import play.api.mvc.SimpleResult
+import play.api.libs.ws.{ResponseHeaders, WS}
 
 object Application extends Controller {
   
@@ -63,6 +64,34 @@ object Application extends Controller {
         )),
       body = channel
     )
+
+  }
+
+  def streamFromWS = Action { request =>
+
+    val (wsConsumer, stream) = joined[Array[Byte]]
+
+    var contentLength = 0
+    var contentType = "binary/octet-stream"
+    val consumer = { rs: ResponseHeaders =>
+      contentLength = rs.headers.get("Content-Length").get(0).toInt
+      contentType = rs.headers.get("Content-Type").map(_(0)).getOrElse("binary/octet-stream")
+      wsConsumer
+    }
+    Async {
+      WS.url("http://www.bvg.de/index.php/de/binaries/asset/download/780593/file/1-1").get(consumer).map { it =>
+        SimpleResult(
+          header = ResponseHeader(
+            OK,
+            Map(
+              CONTENT_LENGTH.toString -> contentLength.toString,
+              CONTENT_DISPOSITION -> s"""attachment; filename="Berlin-Tarifbereiche.pdf"""",
+              CONTENT_TYPE -> contentType
+            )),
+          body = stream
+        )
+      }
+    }
 
   }
 

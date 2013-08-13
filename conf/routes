@@ -8,3 +8,4 @@ GET        /              controllers.Application.index
 # streaming demo
 GET        /stream        controllers.Application.stream
 GET        /stream2       controllers.Application.streamFromIteratee
+GET        /stream3       controllers.Application.streamFromWS

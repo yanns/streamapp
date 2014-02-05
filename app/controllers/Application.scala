@@ -2,8 +2,7 @@ package controllers
 
 import play.api.mvc._
 import play.api.libs.iteratee._
-import scala.concurrent.{Future, Promise}
-import play.api.libs.concurrent.Execution.Implicits._
+import scala.concurrent.{ ExecutionContext, Future, Promise }
 import play.api.mvc.ResponseHeader
 import play.api.mvc.SimpleResult
 import play.api.libs.ws.{ResponseHeaders, WS}
@@ -17,6 +16,8 @@ object Application extends Controller {
   def stream = Action { request =>
 
     val content = "hello world ".*(10).getBytes
+
+    import play.api.libs.concurrent.Execution.Implicits._
 
     val channel = Concurrent.unicast[Array[Byte]] (
       onStart = { pushee =>
@@ -45,6 +46,8 @@ object Application extends Controller {
 
     val (iteratee, channel) = joined[Array[Byte]]
 
+    import play.api.libs.concurrent.Execution.Implicits._
+
     // send first chunk
     Enumerator(content)(iteratee) map { it =>
       // send second chunk
@@ -67,9 +70,9 @@ object Application extends Controller {
 
   }
 
-  def streamFromWS = Action { request =>
+  def streamFromWS = Action.async { request =>
 
-    val resultPromise = Promise[Result]
+    val resultPromise = Promise[SimpleResult]
 
     val consumer = { rs: ResponseHeaders =>
       val (wsConsumer, stream) = joined[Array[Byte]]
@@ -89,9 +92,11 @@ object Application extends Controller {
       wsConsumer
     }
 
+    import play.api.libs.concurrent.Execution.Implicits._
+
     WS.url("http://downloads.typesafe.com/play/2.1.3/play-2.1.3.zip").get(consumer).map(_.run)
 
-    Async(resultPromise.future)
+    resultPromise.future
   }
 
 
@@ -110,7 +115,7 @@ object Application extends Controller {
 
         // Equivalent to map, but allows us to handle failures
         def wrap(delegate: Iteratee[A, B]): Iteratee[A, B] = new Iteratee[A, B] {
-          def fold[C](folder: (Step[A, B]) => Future[C]) = {
+          def fold[C](folder: (Step[A, B]) => Future[C])(implicit ec: ExecutionContext): Future[C] = {
             val toReturn = delegate.fold {
               case done @ Step.Done(a, in) => {
                 doneIteratee.success(done.it)
@@ -127,6 +132,8 @@ object Application extends Controller {
             toReturn
           }
         }
+
+        import play.api.libs.concurrent.Execution.Implicits._
 
         if (promisedIteratee.trySuccess(wrap(i).map(_ => ()))) {
           doneIteratee.future

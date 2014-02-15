@@ -18,7 +18,7 @@ object Application extends Controller {
 
     val content = "hello world ".*(10).getBytes
 
-    import play.api.libs.concurrent.Execution.Implicits._
+    import executioncontext.Execution.Implicits.trampoline
 
     val channel = Concurrent.unicast[Array[Byte]] (
       onStart = { pushee =>
@@ -47,7 +47,7 @@ object Application extends Controller {
 
     val (iteratee, channel) = joined[Array[Byte]]
 
-    import play.api.libs.concurrent.Execution.Implicits._
+    import executioncontext.Execution.Implicits.trampoline
 
     // send first chunk
     Enumerator(content)(iteratee) map { it =>
@@ -93,7 +93,7 @@ object Application extends Controller {
       wsConsumer
     }
 
-    import play.api.libs.concurrent.Execution.Implicits._
+    import executioncontext.Execution.Implicits.trampoline
 
     WS.url("http://downloads.typesafe.com/play/2.1.3/play-2.1.3.zip").get(consumer).map(_.run)
 
